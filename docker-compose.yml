@@ -1,0 +1,30 @@
+# 航电规程宏卫生复核 —— Compose 编排
+# 宿主端口可配置：HOST_PORT（默认 8080）
+#   web    常驻：规程页面 + /healthz + /api/review
+#   verify 一次性验收：代码测试 -> 页面构建 -> 对 web 的 HTTP/API 冒烟，完成后退出并以退出码报告
+services:
+  web:
+    build: .
+    environment:
+      # 容器内固定 8080，宿主侧由 HOST_PORT 配置
+      - PORT=8080
+      - HOST=0.0.0.0
+    ports:
+      - "${HOST_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 2s
+    restart: unless-stopped
+
+  verify:
+    build: .
+    environment:
+      - BASE_URL=http://web:8080
+    depends_on:
+      web:
+        condition: service_healthy
+    command: ["node", "scripts/verify.js"]
+    restart: "no"

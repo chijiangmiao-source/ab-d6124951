@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>宏卫生复核台 · 飞控脚本可复用参数片段</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --panel2: #1c2330; --line: #2d333b;
+    --fg: #e6edf3; --muted: #91a0ae; --accent: #58a6ff; --ok: #3fb950;
+    --warn: #d29922; --err: #f85149; --tag: #bc8cff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 14px/1.55 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", monospace;
+  }
+  header {
+    padding: 18px 28px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 18px; margin: 0; }
+  header .sub { color: var(--muted); font-size: 12.5px; }
+  main { max-width: 1180px; margin: 0 auto; padding: 22px 28px 60px; }
+  .grid { display: grid; grid-template-columns: minmax(360px, 1fr) minmax(420px, 1.2fr); gap: 20px; }
+  @media (max-width: 920px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .panel > .ph { padding: 10px 16px; border-bottom: 1px solid var(--line); font-weight: 600; display:flex; justify-content:space-between; align-items:center; }
+  .panel > .pb { padding: 14px 16px; }
+  textarea {
+    width: 100%; min-height: 320px; resize: vertical; background: #0b0f14; color: var(--fg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 12px; font: 12.5px/1.6 ui-monospace, Menlo, Consolas, monospace;
+    tab-size: 2;
+  }
+  textarea:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+  .row { display: flex; gap: 10px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
+  button {
+    background: var(--accent); color: #08111f; border: 0; border-radius: 7px;
+    padding: 8px 18px; font-weight: 700; cursor: pointer;
+  }
+  button.secondary { background: var(--panel2); color: var(--fg); border: 1px solid var(--line); }
+  .hint { color: var(--muted); font-size: 12px; }
+  .examples button { font-size: 12px; padding: 4px 10px; font-weight: 400; }
+  .formcard { border: 1px solid var(--line); border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+  .formcard > .fh { padding: 8px 12px; font-size: 12.5px; display: flex; justify-content: space-between; gap: 8px; background: var(--panel2); }
+  .formcard > .fb { padding: 12px; }
+  .badge { font-size: 11px; padding: 1px 8px; border-radius: 99px; font-weight: 700; white-space: nowrap; }
+  .badge.ok { background: rgba(63,185,80,.15); color: var(--ok); border: 1px solid rgba(63,185,80,.4); }
+  .badge.bad { background: rgba(248,81,73,.13); color: var(--err); border: 1px solid rgba(248,81,73,.4); }
+  pre.code {
+    background: #0b0f14; border: 1px solid var(--line); border-radius: 7px;
+    padding: 10px 12px; margin: 0; overflow-x: auto; font: 12.5px/1.6 ui-monospace, Menlo, Consolas, monospace;
+    white-space: pre;
+  }
+  .snippet { border-left: 3px solid var(--err); padding: 6px 12px; background: #1a1215; border-radius: 0 7px 7px 0; margin: 8px 0; }
+  .snippet .ln { color: var(--muted); user-select: none; }
+  .snippet .caret { color: var(--err); }
+  h4 { margin: 14px 0 6px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 6px 8px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .tag { color: var(--tag); font-weight: 700; }
+  .step { border-left: 3px solid var(--accent); padding: 6px 10px; margin: 8px 0; background: var(--panel2); border-radius: 0 6px 6px 0; }
+  .step .meta { color: var(--muted); font-size: 12px; }
+  .errbox { border: 1px solid rgba(248,81,73,.45); background: rgba(248,81,73,.08); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
+  .errbox .code { color: var(--err); font-weight: 700; font-size: 12px; letter-spacing: .05em; }
+  .ev { color: var(--warn); font-size: 12.5px; margin: 4px 0; }
+  .verdict { font-size: 13px; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; }
+  .verdict.ok { background: rgba(63,185,80,.1); border: 1px solid rgba(63,185,80,.35); }
+  .verdict.bad { background: rgba(248,81,73,.08); border: 1px solid rgba(248,81,73,.35); }
+  .muted { color: var(--muted); }
+  .pill { display:inline-block; background: var(--panel2); border:1px solid var(--line); border-radius:6px; padding:0 7px; font-size:11.5px; color:var(--muted); }
+  #status { font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>宏卫生复核台</h1>
+  <span class="sub">受限 syntax-rules（≤12 宏 / 每宏 ≤8 规则 / 一层重复）· 规范化展开 · 绑定身份核验 · 供航电规程团队编入飞控脚本前复核</span>
+</header>
+<main>
+  <div class="grid">
+    <section class="panel">
+      <div class="ph"><span>受限 S 表达式模块</span><span id="status"></span></div>
+      <div class="pb">
+        <textarea id="src" spellcheck="false"></textarea>
+        <div class="row">
+          <button id="run">发起复核</button>
+          <button class="secondary" id="clear">清除结论</button>
+          <span class="hint">每次复核均为无状态请求；出错时自动清除旧结论并定位首个相关源片段。</span>
+        </div>
+        <h4>示例场景</h4>
+        <div class="row examples">
+          <button data-ex="hygiene">嵌套宏·同名 x 卫生</button>
+          <button data-ex="literal">literal 词法遮蔽</button>
+          <button data-ex="ellipsis">重复长度不一致</button>
+          <button data-ex="nomatch">规则无匹配</button>
+          <button data-ex="unbound">未绑定 literal</button>
+          <button data-ex="recursion">递归超限→后续不受阻</button>
+          <button data-ex="incomplete">语法不完整</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="ph"><span>复核结论</span><span class="pill" id="meta"></span></div>
+      <div class="pb" id="out">
+        <p class="muted">粘贴模块后点击“发起复核”。结论包含：规范化展开、每步命中规则与调用位置、绑定身份对照（调用点 x 与模板临时 x 不同身份）。</p>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+const EXAMPLES = {
+  hygiene: `;; 嵌套宏调用：调用点 x 与模板临时 x 同名，但属于不同绑定身份
+(define-syntax with-temp-x
+  (syntax-rules ()
+    ((with-temp-x body)
+     (let ((x 99)) body))))
+
+(define-syntax capture-probe
+  (syntax-rules ()
+    ((capture-probe e)
+     (with-temp-x e))))
+
+((lambda (x)
+   (capture-probe x))
+ 7)`,
+  literal: `;; literal 按词法身份匹配：调用点局部 if 同名遮蔽核心 if，不应命中 literal
+(define-syntax branch-on
+  (syntax-rules (if)
+    ((branch-on if consequent) consequent)
+    ((branch-on _ e) e)))
+
+((lambda (if)
+   (branch-on if 123))
+ 'local-if)
+
+(branch-on if 456)`,
+  ellipsis: `;; 两个重复变量长度不一致
+(define-syntax zip3
+  (syntax-rules ()
+    ((zip3 (a ...) (b ...))
+     (pair (a b) ...))))
+
+(zip3 (1 2 3) (4 5))`,
+  nomatch: `;; 宏只有一条规则，调用形式不符
+(define-syntax sel
+  (syntax-rules ()
+    ((sel a b) (cons a b))))
+
+(sel 1)`,
+  unbound: `;; literal knobs/switch 没有词法绑定
+(define-syntax param
+  (syntax-rules (knobs/switch)
+    ((param knobs/switch) 'ok)))
+
+(param knobs/switch)`,
+  recursion: `;; 第一个形式无限递归（超限），第二个形式仍须正常复核
+(define-syntax loop
+  (syntax-rules ()
+    ((loop) (loop))))
+
+(loop)
+
+((lambda (x) x) 42)`,
+  incomplete: `;; 缺少右括号
+(define-syntax bad
+  (syntax-rules ()
+    ((bad x) x)
+
+(bad 1)`,
+};
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function snippetHtml(sn) {
+  if (!sn) return '';
+  const pad = String(sn.line).length;
+  return `<div class="snippet"><pre class="code" style="border:0;background:transparent;padding:0"><span class="ln">${sn.line} │ </span>${esc(sn.text)}
+<span class="ln">${' '.repeat(pad)} │ </span><span class="caret">${esc(sn.caret)}</span></pre>
+<div class="meta muted">第 ${sn.line} 行，第 ${sn.column} 列（源偏移 ${sn.offset}）</div></div>`;
+}
+
+function errorHtml(e) {
+  let html = `<div class="errbox"><div class="code">${esc(e.code)}</div><div>${esc(e.message)}</div>`;
+  if (e.snippet) html += snippetHtml(e.snippet);
+  if (e.evidence && e.evidence.length) {
+    html += '<h4>稳定证据</h4>' + e.evidence.map((v) => `<div class="ev">• ${esc(v)}</div>`).join('');
+  }
+  html += '</div>';
+  return html;
+}
+
+function identityLegend(ids) {
+  if (!ids.length) return '<p class="muted">本形式无局部/模板绑定身份需要区分。</p>';
+  const rows = ids.map((it) => `<tr>
+      <td><span class="tag">#${esc(it.tag)}</span></td>
+      <td>${esc(it.name)}</td>
+      <td>${esc(it.origin)}</td>
+      <td class="muted">${it.loc ? `源偏移 ${it.loc.offset}` : '—'}</td>
+    </tr>`).join('');
+  return `<table><thead><tr><th>身份</th><th>拼写</th><th>来源作用域</th><th>引入位置</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function traceHtml(trace) {
+  if (!trace.length) return '<p class="muted">无宏调用（形式中未出现宏）。</p>';
+  return trace.map((t, i) => `
+    <div class="step">
+      <div><strong>步骤 ${i + 1}</strong>：展开宏 <code>${esc(t.macro)}</code> · 命中 <strong>规则 ${t.rule}</strong></div>
+      <div class="meta">规则：<code>${esc(t.ruleText)}</code></div>
+      <div class="meta">调用位置：${esc(t.callSiteKind)}${t.callSnippet ? `（第 ${t.callSnippet.line} 行第 ${t.callSnippet.column} 列，源偏移 ${t.callLoc.offset}）` : ''}</div>
+      ${t.callSnippet ? snippetHtml(t.callSnippet) : ''}
+    </div>`).join('');
+}
+
+function render(data) {
+  const out = $('out');
+  // 任何新结论都整体替换旧结论（清除旧结论）
+  if (!data.ok) {
+    $('meta').textContent = data.stage === 'parse' ? '解析阶段失败' : '模块阶段失败';
+    out.innerHTML = errorHtml(data.error);
+    return;
+  }
+  const total = data.forms.length;
+  const failed = data.forms.filter((f) => !f.ok).length;
+  $('meta').textContent = `宏 ${data.macros.length} 个 · 形式 ${total} 个 · 异常 ${failed} 个`;
+  const verdict = failed === 0
+    ? `<div class="verdict ok">全部 ${total} 个形式完成规范化展开。标注 <span class="tag">#x</span> 的标识符即使拼写相同，只要身份标签不同即属不同绑定——模板临时变量不会捕获调用点同名控制量。</div>`
+    : `<div class="verdict bad">${total - failed} 个形式展开成功，${failed} 个形式异常；异常已就地隔离并附首个相关源片段，不影响其余形式与后续模块复核。</div>`;
+  const cards = data.forms.map((f, i) => {
+    const head = `<div class="fh"><span>形式 ${i + 1}${f.snippet ? ` · 第 ${f.snippet.line} 行` : ''}</span>
+      <span class="badge ${f.ok ? 'ok' : 'bad'}">${f.ok ? '已展开' : f.error.code}</span></div>`;
+    if (!f.ok) return `<div class="formcard">${head}<div class="fb">${errorHtml(f.error)}</div></div>`;
+    return `<div class="formcard">${head}
+      <div class="fb">
+        <h4>调用点源片段</h4>
+        ${snippetHtml(f.snippet)}
+        <h4>规范化展开（let 已归约为 lambda 立即调用；#标签 为绑定身份）</h4>
+        <pre class="code">${esc(f.normalizedText)}</pre>
+        <h4>展开步骤：命中规则与调用位置</h4>
+        ${traceHtml(f.trace)}
+        <h4>绑定身份对照</h4>
+        ${identityLegend(f.identities)}
+      </div></div>`;
+  }).join('');
+  out.innerHTML = verdict + cards;
+}
+
+async function runReview() {
+  const src = $('src').value;
+  $('status').textContent = '复核中…';
+  $('out').innerHTML = '<p class="muted">正在展开与核验绑定身份…</p>';
+  $('meta').textContent = '';
+  try {
+    const res = await fetch('/api/review', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ source: src }),
+    });
+    const data = await res.json();
+    $('status').textContent = `上次复核：${new Date().toLocaleTimeString()}`;
+    render(data);
+  } catch (err) {
+    $('status').textContent = '请求失败';
+    $('out').innerHTML = `<div class="errbox"><div class="code">TRANSPORT_ERROR</div><div>${esc(String(err))}</div></div>`;
+  }
+}
+
+$('run').addEventListener('click', runReview);
+$('clear').addEventListener('click', () => { $('out').innerHTML = '<p class="muted">旧结论已清除。</p>'; $('meta').textContent = ''; $('status').textContent = ''; });
+document.querySelectorAll('button[data-ex]').forEach((b) => {
+  b.addEventListener('click', () => { $('src').value = EXAMPLES[b.dataset.ex]; runReview(); });
+});
+$('src').addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') runReview();
+});
+$('src').value = EXAMPLES.hygiene;
+</script>
+</body>
+</html>

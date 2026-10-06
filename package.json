@@ -1,0 +1,16 @@
+{
+  "name": "macro-hygiene-review",
+  "version": "1.0.0",
+  "description": "航电规程宏卫生复核：受限 syntax-rules 模块的规范化展开与绑定身份核验",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "build": "node src/build.js",
+    "test": "node --test test/",
+    "verify": "node scripts/verify.js"
+  }
+}
