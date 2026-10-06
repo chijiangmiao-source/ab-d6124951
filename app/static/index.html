@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>宏卫生展开复核 · 航电规程参数片段</title>
+<style>
+  :root {
+    --bg: #0e1420;
+    --panel: #161f2e;
+    --panel2: #1c2740;
+    --line: #2a3a55;
+    --ink: #dce6f5;
+    --muted: #8ea2c0;
+    --accent: #5aa9ff;
+    --ok: #46d18c;
+    --warn: #ffb347;
+    --bad: #ff6b6b;
+    --tmpl: #c792ea;
+    --call: #7fd1ff;
+    --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px; line-height: 1.55;
+  }
+  header {
+    padding: 16px 24px; border-bottom: 1px solid var(--line);
+    background: linear-gradient(120deg, #13203a, #0e1420);
+    display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 18px; margin: 0; letter-spacing: .5px; }
+  header .sub { color: var(--muted); font-size: 12.5px; }
+  main {
+    display: grid; grid-template-columns: minmax(380px, 46%) 1fr;
+    gap: 18px; padding: 18px 24px; align-items: start;
+  }
+  @media (max-width: 1024px) { main { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 13.5px; margin: 0 0 10px; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 1.2px;
+  }
+  textarea {
+    width: 100%; min-height: 340px; resize: vertical;
+    background: #0a101c; color: var(--ink); border: 1px solid var(--line);
+    border-radius: 8px; padding: 10px 12px; font-family: var(--mono);
+    font-size: 13px; line-height: 1.6; tab-size: 2;
+  }
+  textarea:focus { outline: 1px solid var(--accent); }
+  .toolbar { display: flex; gap: 10px; margin: 10px 0 4px; flex-wrap: wrap; align-items: center; }
+  button {
+    background: var(--accent); color: #081322; border: 0; border-radius: 7px;
+    padding: 8px 18px; font-weight: 700; cursor: pointer; font-size: 13.5px;
+  }
+  button.secondary { background: #2c3f60; color: var(--ink); }
+  button:disabled { opacity: .55; cursor: wait; }
+  .hint { color: var(--muted); font-size: 12px; }
+  .badge {
+    display: inline-block; padding: 1px 9px; border-radius: 20px; font-size: 11.5px;
+    font-weight: 700; border: 1px solid var(--line);
+  }
+  .badge.ok { color: var(--ok); border-color: #27604a; background: #11271d; }
+  .badge.bad { color: var(--bad); border-color: #6b2f33; background: #2a1416; }
+  .badge.tmpl { color: var(--tmpl); border-color: #4a3368; background: #201530; }
+  .badge.call { color: var(--call); border-color: #26506b; background: #102433; }
+  pre {
+    background: #0a101c; border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; font-family: var(--mono); font-size: 13px;
+    overflow-x: auto; margin: 8px 0 0; white-space: pre-wrap; word-break: break-word;
+  }
+  .step {
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+    margin: 10px 0; background: var(--panel2); cursor: pointer;
+  }
+  .step:hover { border-color: var(--accent); }
+  .step .meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-size: 12.5px; }
+  .step .sid { color: var(--muted); font-family: var(--mono); }
+  .step .rule { color: var(--warn); font-weight: 700; }
+  .step .loc { color: var(--accent); font-family: var(--mono); }
+  .kv { color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  td.tag, th.tag { font-family: var(--mono); color: var(--accent); white-space: nowrap; }
+  .check {
+    border-left: 3px solid var(--ok); background: #11271d; border-radius: 6px;
+    padding: 9px 12px; margin: 8px 0;
+  }
+  .check .tt { font-weight: 700; color: var(--ok); }
+  .errorbox {
+    border: 1px solid #6b2f33; background: #2a1416; border-radius: 8px; padding: 12px 14px;
+  }
+  .errorbox h3 { margin: 0 0 6px; color: var(--bad); font-size: 14px; }
+  .errorbox .ev { font-family: var(--mono); color: var(--warn); font-size: 12px; }
+  .snippet { color: #ffd9a8; }
+  .empty { color: var(--muted); font-style: italic; }
+  .legend span { margin-right: 14px; font-size: 12px; color: var(--muted); }
+  .legend b.t { color: var(--tmpl); } .legend b.c { color: var(--call); }
+  .pillrow { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;}
+  .scope-chip { font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 5px; padding: 0 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>宏卫生展开复核台</h1>
+  <span class="sub">可复用参数片段编入飞控脚本前的 syntax-rules 展开审查 ·
+    受限模块：至多 12 个宏，每宏至多 8 条规则，重复仅允许一层</span>
+</header>
+<main>
+  <section>
+    <div class="card">
+      <h2>待复核模块</h2>
+      <textarea id="src" spellcheck="false" autocomplete="off"></textarea>
+      <div class="toolbar">
+        <button id="go">发起复核</button>
+        <button id="sample" class="secondary">载入示例</button>
+        <span class="hint" id="counter"></span>
+      </div>
+      <div class="legend">
+        <span><b class="t">⟨模⟩</b> 模板引入标识符（携带宏引入作用域）</span>
+        <span><b class="c">⟨调⟩</b> 调用点标识符（模式变量保留原绑定）</span>
+      </div>
+    </div>
+    <div class="card" id="errorCard" hidden>
+      <h2>复核未通过</h2>
+      <div class="errorbox">
+        <h3 id="errKind"></h3>
+        <div id="errMsg"></div>
+        <pre class="snippet" id="errSnippet"></pre>
+        <div class="pillrow">
+          <span class="scope-chip" id="errPos"></span>
+          <span class="scope-chip ev" id="errEv"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="card">
+      <h2>复核结论</h2>
+      <div id="verdict"><span class="empty">尚未发起复核。</span></div>
+    </div>
+    <div class="card" id="normCard" hidden>
+      <h2>规范化展开结果（绑定身份标注）</h2>
+      <pre id="norm"></pre>
+      <div class="hint">⁽Bn⁾ 词法绑定出现；⁽Fn⁾ 自由/全局标识符。上标相同即同一绑定身份。</div>
+    </div>
+    <div class="card" id="hygCard" hidden>
+      <h2>卫生判定（同名不同身份）</h2>
+      <div id="hyg"></div>
+    </div>
+    <div class="card" id="stepsCard" hidden>
+      <h2>逐步展开命中记录</h2>
+      <div id="steps"></div>
+    </div>
+    <div class="card" id="idCard" hidden>
+      <h2>绑定身份清单</h2>
+      <table>
+        <thead><tr><th class="tag">身份</th><th>拼写</th><th>类别</th><th>来源</th><th>源位置</th><th>标记作用域</th></tr></thead>
+        <tbody id="ids"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const ta = $("src");
+
+function esc(s) {
+  return String(s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+}
+function selectSpan(span) {
+  if (!span) return;
+  ta.focus();
+  ta.setSelectionRange(span[0], span[1]);
+  // approximate scroll into view
+  const before = ta.value.slice(0, span[0]);
+  const line = before.split("\n").length;
+  ta.scrollTop = Math.max(0, (line - 3) * 21);
+}
+function clearConclusions() {
+  $("verdict").innerHTML = '<span class="empty">尚未发起复核。</span>';
+  ["normCard","hygCard","stepsCard","idCard","errorCard"].forEach(id => $(id).hidden = true);
+}
+function kindLabel(k) {
+  return ({
+    "no-rule-match": "规则无匹配",
+    "repetition-mismatch": "重复变量长度不一致",
+    "unbound-literal": "未绑定 literal",
+    "recursion-limit": "宏递归超限",
+    "incomplete-syntax": "语法不完整/不合法",
+    "bad-request": "请求不合法",
+  })[k] || k;
+}
+function updateCounter() {
+  const macros = (ta.value.match(/\(define-syntax\b/g) || []).length;
+  $("counter").textContent = `已识别 ${macros} 个宏（上限 12）`;
+}
+ta.addEventListener("input", updateCounter);
+
+async function runReview() {
+  const btn = $("go");
+  btn.disabled = true;
+  clearConclusions();  // 按要求：新复核先清除旧结论
+  try {
+    const resp = await fetch("/api/review", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({source: ta.value}),
+    });
+    const data = await resp.json();
+    render(data);
+  } catch (e) {
+    showClientError("服务不可达：" + e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function showClientError(msg) {
+  $("errorCard").hidden = false;
+  $("errKind").textContent = "请求失败";
+  $("errMsg").textContent = msg;
+  $("errSnippet").textContent = "";
+  $("errPos").textContent = "";
+  $("errEv").textContent = "";
+}
+
+function render(data) {
+  if (!data.ok) {
+    const e = data.error || {};
+    $("errorCard").hidden = false;
+    $("errKind").textContent = kindLabel(e.kind);
+    $("errMsg").textContent = e.message || "";
+    $("errSnippet").textContent = e.snippet || "";
+    $("errPos").textContent = e.line ? `首个相关源片段：第 ${e.line} 行 第 ${e.column} 列` : "";
+    $("errEv").textContent = e.evidence ? `稳定证据 ${e.evidence}` : "";
+    if (e.span) {
+      $("errSnippet").style.cursor = "pointer";
+      $("errSnippet").onclick = () => selectSpan(e.span);
+    }
+    $("verdict").innerHTML =
+      '<span class="badge bad">不通过</span> 已定位首个相关源片段并给出稳定证据，旧结论已清除。';
+    if (e.span) selectSpan(e.span);
+    return;
+  }
+
+  $("verdict").innerHTML =
+    '<span class="badge ok">通过</span> 展开完成，共识别 ' + data.macroCount +
+    ' 个宏、记录 ' + data.steps.length + ' 次宏调用展开。';
+
+  $("normCard").hidden = false;
+  $("norm").textContent = data.normalized;
+
+  // hygiene checks
+  $("hygCard").hidden = false;
+  if (!data.hygieneChecks.length) {
+    $("hyg").innerHTML = '<span class="empty">未出现同名跨来源绑定。</span>';
+  } else {
+    $("hyg").innerHTML = data.hygieneChecks.map(c => `
+      <div class="check">
+        <div class="tt">✓ ${esc(c.name)}：${c.verdict === "distinct" ? "不同绑定身份" : esc(c.verdict)}</div>
+        <div>${esc(c.message)}</div>
+        <table style="margin-top:6px">
+          <thead><tr><th class="tag">身份</th><th>来源</th><th>源位置</th><th>标记作用域</th></tr></thead>
+          <tbody>${c.bindings.map(b => `
+            <tr><td class="tag">${esc(b.tag)}</td>
+              <td>${b.origin === "macro-template"
+                  ? '<span class="badge tmpl">宏模板临时量</span>'
+                  : '<span class="badge call">调用点/源模块</span>'}</td>
+              <td>${b.line ? "第 " + b.line + " 行 第 " + b.column + " 列" : "—"}</td>
+              <td class="scope-chip" style="display:inline-block">${esc((b.scopes||[]).join(", "))}</td>
+            </tr>`).join("")}</tbody>
+        </table>
+      </div>`).join("");
+  }
+
+  // steps
+  $("stepsCard").hidden = false;
+  $("steps").innerHTML = data.steps.length ? data.steps.map(s => `
+    <div class="step" data-span='${JSON.stringify(s.callSpan)}'>
+      <div class="meta">
+        <span class="sid">${esc(s.id)}</span>
+        <span class="badge ${s.callOrigin === "macro-template" ? "tmpl" : "call"}">
+          ${s.callOrigin === "macro-template" ? "模板引入的调用" : "调用点"}</span>
+        <span class="kv">宏</span> <b>${esc(s.macro)}</b>
+        <span class="kv">命中</span> <span class="rule">规则 ${s.ruleIndex}</span>
+        <span class="kv">调用位置</span> <span class="loc">第 ${s.callLine} 行 : 第 ${s.callColumn} 列</span>
+        <span class="scope-chip">引入作用域 ${esc(s.introScope)}</span>
+        <span class="scope-chip">使用作用域 ${esc(s.useScope)}</span>
+      </div>
+      <div class="kv" style="margin-top:6px">命中规则</div>
+      <pre style="margin-top:2px">${esc(s.rulePattern + "  =>  " + s.ruleTemplate)}</pre>
+      <div class="kv">调用片段（展开前）</div>
+      <pre style="margin-top:2px">${esc(s.before)}</pre>
+      <div class="kv">展开结果（⟨模⟩=模板新作用域 · ⟨调⟩=保留调用点绑定）</div>
+      <pre style="margin-top:2px">${esc(s.after)}</pre>
+    </div>`).join("")
+    : '<span class="empty">模块体中没有宏调用。</span>';
+  document.querySelectorAll(".step").forEach(el => {
+    el.addEventListener("click", () => {
+      const span = JSON.parse(el.dataset.span);
+      selectSpan(span);
+    });
+  });
+
+  // identities
+  $("idCard").hidden = false;
+  $("ids").innerHTML = data.identities.map(i => `
+    <tr>
+      <td class="tag">${esc(i.tag)}</td>
+      <td>${esc(i.name)}</td>
+      <td>${esc({binder: "词法绑定", builtin: "内建全局", global: "全局",
+                 free: "自由标识符", "free-global": "未知全局",
+                 "macro-introduced-free": "模板自由标识符"}[i.kind] || i.kind)}</td>
+      <td>${i.origin === "macro-template"
+          ? '<span class="badge tmpl">宏模板</span>'
+          : i.origin === "source" ? '<span class="badge call">源码</span>' : esc(i.origin)}</td>
+      <td>${i.line ? "第 " + i.line + ":" + i.column : "—"}</td>
+      <td class="scope-chip" style="display:inline-block">${esc((i.scopes||[]).join(", "))}</td>
+    </tr>`).join("");
+}
+
+$("go").addEventListener("click", runReview);
+$("sample").addEventListener("click", async () => {
+  const r = await fetch("/api/sample");
+  const d = await r.json();
+  ta.value = d.source;
+  updateCounter();
+  clearConclusions();
+});
+
+// initial sample
+(async () => {
+  try {
+    const r = await fetch("/api/sample");
+    const d = await r.json();
+    ta.value = d.source;
+    updateCounter();
+    runReview();
+  } catch (_) { /* page stays usable for manual paste */ }
+})();
+</script>
+</body>
+</html>
